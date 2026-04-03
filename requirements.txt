@@ -1,0 +1,8 @@
+streamlit
+dotenv
+numpy
+faster-whisper
+pyannote.audio==3.0.0
+torch
+torchvision
+torchaudio
