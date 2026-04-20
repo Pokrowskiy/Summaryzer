@@ -17,7 +17,7 @@ class MeetingSummarizer:
         self.llm = Llama(
             model_path=self.model_path,
             n_ctx=2048,
-            n_threads=12, 
+            n_threads=16, 
             verbose=True
         )
 
@@ -44,38 +44,34 @@ class MeetingSummarizer:
     def process_transcript(self, text):
         llm = Llama(model_path=self.model_path, n_ctx=2048, n_threads=4) 
             
-        prompt = prompt = f"""<|im_start|>system
-            Ты — профессиональный аналитик встреч. Твоя задача — извлечь данные из транскрипта в строго заданном формате, данные нужны на русском языке.
+        prompt = f"""<|im_start|>system
+Ты - модуль автоматической обработки текста. Твоя задача: прочитать транскрипт и заполнить форму.
+НЕ пиши вступлений. НЕ пиши заключений. Используй только данные из текста.
+ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ.
 
-            ИНСТРУКЦИИ:
-            1. Сопоставь [SPEAKER_XX] с реальными именами на основе контекста.
-            2. Напиши краткое резюме (3-5 предложений).
-            3. Составь список конкретных поручений.
+ФОРМАТ:
+[NAMES]
+[SPEAKER_XX] - Имя (если упоминалось, иначе попробуй предположить его роль или укажи "Неизвестно")
 
-            ВЫВОДИ ОТВЕТ СТРОГО ПО ШАБЛОНУ:
+[SUMMARY]
+Краткое описание сути встречи на русском.
 
-            [NAMES]
-            [SPEAKER_00] — Имя
-            [SPEAKER_01] — Имя
+[TASKS]
+- Задача 1
+- Задача 2
 
-            [SUMMARY]
-            Текст резюме встречи.
-
-            [TASKS]
-            - Имя испольнителя задачи: Задача 1
-            - Имя испольнителя задачи: Задача 2
-
-            Никаких вступительных фраз. Только блоки данных.<|im_end|>
-            <|im_start|>user
-            Транскрипт:
-            {text}<|im_end|>
-            <|im_start|>assistant
-        """
+<|im_end|>
+<|im_start|>user
+Транскрипт:
+{text}
+<|im_end|>
+<|im_start|>assistant
+"""
         start_time = time.perf_counter()
         response = self.llm(
             f"<|user|>\n{prompt}<|end|>\n<|assistant|>",
             max_tokens=1024,
-            temperature=0.2,
+            temperature=0.3,
             stop=["<|end|>"],
             echo=False
         )
@@ -92,54 +88,32 @@ class MeetingSummarizer:
         return response['choices'][0]['text']
 
 def parse_llm_result(raw_text):
-    """
-    Парсит структурированный ответ от LLM.
-    Устойчив к мелким опечаткам в тегах [SPEAKER_XX].
-    """
     result = {
         "names": {},
         "summary": "Резюме не сформировано",
         "tasks": []
     }
-    
-    # Разбиваем текст на блоки по заголовкам в скобках
-    parts = re.split(r'\[(NAMES|SUMMARY|TASKS)\]', raw_text, flags=re.IGNORECASE)
-    
-    current_section = None
-    for i in range(len(parts)):
-        section_content = parts[i].strip()
-        
-        if section_content.upper() == "NAMES":
-            current_section = "NAMES"
-        elif section_content.upper() == "SUMMARY":
-            current_section = "SUMMARY"
-        elif section_content.upper() == "TASKS":
-            current_section = "TASKS"
-        else:
-            # Обработка содержимого секций
-            if current_section == "NAMES":
-                # Ищем строки вида [SPEAKER_00] — Имя или SPEAKER_00: Имя
-                lines = section_content.split('\n')
-                for line in lines:
-                    if '—' in line or ':' in line or '-' in line:
-                        # Улучшенное регулярное выражение для поиска SPEAKER_XX
-                        match = re.search(r'SPE\w+?_(\d+)', line, re.IGNORECASE)
-                        if match:
-                            spk_id = f"SPEAKER_{match.group(1)}"
-                            # Берем всё, что после разделителя
-                            name = re.split(r'[—:-]', line)[-1].strip()
-                            result["names"][spk_id] = name
 
-            elif current_section == "SUMMARY":
-                if section_content:
-                    result["summary"] = section_content
+    # Поиск имен (между NAMES и SUMMARY/РЕЗЮМЕ)
+    names_block = re.search(r'\[NAMES\](.*?)(?:\[SUMMARY\]|РЕЗЮМЕ:)', raw_text, re.DOTALL | re.IGNORECASE)
+    if names_block:
+        lines = names_block.group(1).strip().split('\n')
+        for line in lines:
+            if '—' in line or ':' in line or '-' in line:
+                match = re.search(r'SPEAKER_(\d+)', line, re.IGNORECASE)
+                if match:
+                    name = re.split(r'[—:-]', line)[-1].strip()
+                    result["names"][f"SPEAKER_{match.group(1)}"] = name
 
-            elif current_section == "TASKS":
-                # Ищем строки, начинающиеся с буллитов
-                lines = section_content.split('\n')
-                for line in lines:
-                    clean_line = line.strip().lstrip('-•*').strip()
-                    if clean_line:
-                        result["tasks"].append(clean_line)
-                        
+    # Поиск саммари (между SUMMARY/РЕЗЮМЕ и TASKS/ЗАДАЧИ)
+    summary_block = re.search(r'(?:\[SUMMARY\]|РЕЗЮМЕ:)(.*?)(?:\[TASKS\]|ЗАДАЧИ:)', raw_text, re.DOTALL | re.IGNORECASE)
+    if summary_block:
+        result["summary"] = summary_block.group(1).strip()
+
+    # Поиск задач (всё после TASKS/ЗАДАЧИ)
+    tasks_block = re.search(r'(?:\[TASKS\]|ЗАДАЧИ:)(.*)', raw_text, re.DOTALL | re.IGNORECASE)
+    if tasks_block:
+        lines = tasks_block.group(1).strip().split('\n')
+        result["tasks"] = [l.strip('-•* ').strip() for l in lines if l.strip()]
+
     return result
