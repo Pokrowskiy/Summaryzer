@@ -36,6 +36,7 @@ async def startup_event():
 def run_pipeline(file_name: str):
     try:
         os.makedirs("data/outputs", exist_ok=True)
+        os.makedirs("data/db", exist_ok=True)
         input_path = f"data/uploads/{file_name}"
         output_path = f"data/outputs/{file_name}.json"
 
@@ -54,14 +55,15 @@ def run_pipeline(file_name: str):
         ])
         with open(f"data/outputs/{file_name}_transcript.txt", "w", encoding="utf-8") as f:
             f.write(text)
+        
         raw_output = MODELS["llm"].process_transcript(text)
         output = parse_llm_result(raw_output)
         with open(f"data/outputs/{file_name}_analysys.txt", "w", encoding="utf-8") as f:
-            f.write(output)
+            f.write(raw_output)
 
-        output["full_transcript"] = final_transcript
-        #with open(f"data/outputs/{file_name}.json", "w", encoding="utf-8") as f:
-        #    json.dump(output, f, ensure_ascii=False, indent=4)
+        output["full_transcript"] = full_transcript
+        with open(f"data/db/{file_name}.json", "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=4)
 
         tasks_db[file_name] = "completed"
 
@@ -91,7 +93,7 @@ async def get_task_status(file_name: str):
 
 @app.get("/result/{file_name}")
 async def get_result(file_name: str):
-    path = f"data/outputs/{file_name}.json"
+    path = f"data/db/{file_name}.json"
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
