@@ -26,19 +26,14 @@ except Exception as e:
     print(f"Критическая ошибка импорта: {e}")
     raise
 
-load_dotenv()
-
-import os
-import torch
 from pyannote.audio import Pipeline
-from dotenv import load_dotenv
 
 load_dotenv()
 
 class DiarizationEngine:
     def __init__(self):
         token = os.getenv("HF_TOKEN")
-        print("--- Loading Pyannote Pipeline ---")
+        print("Loading Pyannote Pipeline...")
         try:
             self.pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
@@ -52,7 +47,7 @@ class DiarizationEngine:
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.pipeline.to(self.device)
-        print(f"--- Diarizer ready on {self.device} ---")
+        print(f"Pyannote ready on {self.device}.")
 
     def process(self, file_path):
         return self.pipeline(file_path)
