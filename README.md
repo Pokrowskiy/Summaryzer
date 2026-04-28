@@ -11,8 +11,10 @@
 * **CPU:** Intel Core i5 2.7 GHz
 
 * **Дискретная GPU:** От 4 ГБ VRAM (для стандартной модели. Замена LLM на более мощную может повысить требования к ресурсам системы).
-ИЛИ 
-* **Встроенная GPU:** От 8 ГБ RAM (Встроенная GPU использует общую RAM)
+  
+   ИЛИ
+
+* **Встроенная GPU:** От 12 ГБ RAM (Встроенная GPU использует общую RAM)
 
 * Активный `HF_TOKEN` (Hugging Face) с доступом к моделям :
     - `https://huggingface.co/pyannote/speaker-diarization-3.1`
@@ -103,9 +105,9 @@ MODEL_REPO=bartowski/Qwen2.5-3B-Instruct-GGUF
 
 - `data/db/{timestamp}_{name}.json` - Структурированные данные.
 
-- `data/output/{timestamp}_{name}_transcript.txt` - Текстовая расшифровка по ролям.
+- `data/outputs/{timestamp}_{name}_transcript.txt` - Текстовая расшифровка по ролям.
 
-- `data/output/{timestamp}_{name}_analysys.txt` - Отчёт по расшифровке.
+- `data/outputs/{timestamp}_{name}_analysys.txt` - Отчёт по расшифровке.
 
 ---
 
@@ -118,7 +120,7 @@ MODEL_REPO=bartowski/Qwen2.5-3B-Instruct-GGUF
 
 `tests/testing_audio_single_person.mp3` Аудиодорожка имеет длину 31 секунду и содержит монолог одного лица без шума.
 
-* **WER (Word Error Rate)** - 7.5%. Основной источник ошибок - фонетические интерпретации аббревеатур и профессиональные жаргонизмы.
+* **WER (Word Error Rate)** - 7.5%. Основной источник ошибок - фонетические интерпретации аббревиатур и профессиональные жаргонизмы.
 * **DER (Diarization Error Rate)** - 5.5%. Диаризатор иногда не может распознать конкретный голос в условиях шума и поэтому обозначает его как Unknown
 * **RTF (Real Time Factor)** - Первая обработка после запуска - (1.2) Последующие - (0.9).
 
