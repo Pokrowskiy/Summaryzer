@@ -31,8 +31,6 @@ def load_models():
 async def startup_event():
     threading.Thread(target=load_models, daemon=True).start()
 
-
-
 def run_pipeline(file_name: str):
     try:
         os.makedirs("data/outputs", exist_ok=True)
@@ -70,9 +68,6 @@ def run_pipeline(file_name: str):
     except Exception as e:
         print(f"Ошибка при обработке {file_name}: {e}")
         tasks_db[file_name] = f"error: {str(e)}"
-
-
-
 
 
 @app.get("/health")

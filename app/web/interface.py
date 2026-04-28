@@ -48,13 +48,13 @@ if uploaded_file:
 
             if state == "diarization":
                 status_box.info("Идёт распознавание голосов...")
-                bar.progress(20)
+                bar.progress(10)
             elif state == "transcription":
                 status_box.info("Идёт расшифровка аудио в текст...")
                 bar.progress(40)
             elif state == "summarization":
                 status_box.info("Идёт анализ расшифровки...")
-                bar.progress(60)
+                bar.progress(50)
             elif state == "completed":
                 status_box.success("Обработка завершена!")
                 bar.progress(100)
@@ -75,10 +75,9 @@ if uploaded_file:
                     st.write(result["summary"])
                 st.divider()
                 st.success("Результаты сохранены в папку data/outputs/")
+                break
 
             elif "error" in state:
                 st.error(f"Ошибка: {state}")
-
-            break
-            
+                break
             time.sleep(1)
