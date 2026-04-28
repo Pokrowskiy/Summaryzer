@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 import time
 import threading
 import os
@@ -75,8 +75,15 @@ async def health_check():
     return {"ready": status["models_loaded"]}
 
 @app.post("/process")
-async def process_file(file_name: str, background_tasks: BackgroundTasks):
-    if not status["models_loaded"]:
+async def process_file(file_name: str, background_tasks: BackgroundTasks):    
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.abspath(f"data/uploads/{file_name}")    
+    if not os.path.isfile(file_path):
+        raise HTTPException(
+            status_code=404, 
+        )
+        
+    if not status.get("models_loaded"):
         return {"error": "Models not ready"}
     tasks_db[file_name] = "pending"
     background_tasks.add_task(run_pipeline, file_name)
@@ -84,6 +91,8 @@ async def process_file(file_name: str, background_tasks: BackgroundTasks):
 
 @app.get("/status/{file_name}")
 async def get_task_status(file_name: str):
+    if file_name not in tasks_db:
+        raise HTTPException(status_code=404, detail="Task not found")
     return {"status": tasks_db.get(file_name, "idle")}
 
 @app.get("/result/{file_name}")
